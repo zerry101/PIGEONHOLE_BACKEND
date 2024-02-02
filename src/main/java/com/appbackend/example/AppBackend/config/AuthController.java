@@ -15,6 +15,7 @@ import com.appbackend.example.AppBackend.security.JwtHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,6 +33,10 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
+//import java.util.concurrent.TimeUnit;
+
 
 
 @RestController
@@ -95,12 +100,14 @@ public class AuthController {
 
 
 //        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object user =this.authentication.getName();
+//        Object user =this.authentication.getName();
 
 //        System.out.println(user);
         return new ResponseEntity<>("OTP HAS BEEN SEND TO "+authentication.getName(), HttpStatus.OK);
     }
 
+
+    @Async
     @PostMapping("/verifyotp")
     public ResponseEntity<?> verifyUserOtp(@RequestBody OtpRequest otpRequest,@CurrentSecurityContext SecurityContext context) {
 //            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -122,14 +129,50 @@ public class AuthController {
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
 
 
-            String token = this.jwtHelper.generateToken(userDetails);
+            CompletableFuture<String> jwtfuture=CompletableFuture.supplyAsync(()->{
+                System.out.println("generating jwt");
+                return this.jwtHelper.generateToken(userDetails);
+            });
+
+            ResponseEntity<?> responseEntity=jwtfuture.thenApply(jwt->{
+                JwtResponse response1=JwtResponse.builder() .jwtToken(jwt)
+                        .refreshTokenString(refreshToken.getRefreshTokenString())
+                        .username(userDetails.getUsername())
+                        .build();
+
+                System.out.println("Sending JWT: " + jwt);
+                return new ResponseEntity<>(response1, HttpStatus.OK);
+            }).exceptionally(error->{
+                System.out.println("Error generating JWT: " + error.getMessage());
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }).join();
+
+            CompletableFuture.runAsync(() -> {
+
+                    long startTime = System.currentTimeMillis();
+                    long endTime = startTime + 10000; // Delay for 10 second
+                    while (System.currentTimeMillis() < endTime) {
+                        // Wait for 1 second
+                    }
+                    System.out.println("Hello World!");
+
+            });
+
+//            String token = this.jwtHelper.generateToken(userDetails);
 
 
-            JwtResponse response = JwtResponse.builder().jwtToken(token).refreshTokenString(refreshToken.getRefreshTokenString()).username(userDetails.getUsername()).build();
+//            JwtResponse response = JwtResponse.builder().jwtToken(token).refreshTokenString(refreshToken.getRefreshTokenString()).username(userDetails.getUsername()).build();
 
 
 
-            return new ResponseEntity<>(response, HttpStatus.OK);
+
+
+//            return new ResponseEntity<>(response, HttpStatus.OK);
+            return  responseEntity;
+
+
+
+
 //            return  new ResponseEntity<>("You are successfully logged in",HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);

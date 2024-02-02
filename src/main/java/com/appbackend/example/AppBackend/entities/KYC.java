@@ -13,7 +13,11 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "KYC")
+@Table(name = "KYC",indexes = {
+        @Index(name="idx_userid",columnList = "id")
+}
+)
+
 public class KYC implements Serializable {
 
     @Id
