@@ -11,8 +11,9 @@ import java.util.Optional;
 public interface KYCRepository extends JpaRepository<KYC, Integer> {
 
 
-    Optional<KYC> findByuserId(Integer id);
+//    Optional<KYC> findByuserId(Integer id);
 
+    KYC findKYCById(Integer id);
 
 
 

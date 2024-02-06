@@ -47,7 +47,7 @@ public class EmailOtpService {
 
     public void sendVerificationOtpEmail(String email, String otp) {
         String subject = "Email Verification";
-        String body = "your verification otp is" + otp;
+        String body = "your verification otp is " + otp;
         sendEmail(email, subject, body);
     }
 

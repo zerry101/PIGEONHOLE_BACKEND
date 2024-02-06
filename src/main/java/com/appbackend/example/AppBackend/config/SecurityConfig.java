@@ -27,7 +27,9 @@
                             .requestMatchers("/home/**").authenticated()
                             .requestMatchers("/auth/**").permitAll()
                             .requestMatchers("/KYC/data").authenticated()
+                            .requestMatchers("/KYC/docData").authenticated()
                             .requestMatchers("/KYC/submitData").authenticated()
+                            .requestMatchers("/dashboard/**").hasAuthority("ADMIN")
                             .anyRequest().authenticated())
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(point))
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
