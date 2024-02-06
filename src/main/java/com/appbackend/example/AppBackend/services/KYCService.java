@@ -11,6 +11,8 @@ import com.appbackend.example.AppBackend.repositories.KYCRepository;
 import com.appbackend.example.AppBackend.repositories.UserRepository;
 import com.appbackend.example.AppBackend.utils.ImageUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,7 @@ public class KYCService {
 
         //        if some of kyc details exists then update only those kyc details which are remaining and are provide by client side
 
-        KYC existingKyc = kycRepository.findByuserId((((User) authentication.getPrincipal()).getId())).orElse(null);
+        KYC existingKyc = kycRepository.findKYCById((((User) authentication.getPrincipal()).getId()));
 
 
         if (existingKyc != null) {
@@ -142,17 +144,28 @@ public class KYCService {
     }
 
     @Transactional
-    public KYCDocData getUserKYCDocDataById(Integer id) {
+    public Object getUserKYCDocDataById(Integer id) {
+        KYC kycData = kycRepository.findKYCById(id);
 
-        KYC kycData = kycRepository.findByuserId(id).get();
+        if(kycData !=null )
+        {
 
-        KYCDocData kycDocData = new KYCDocData().builder()
-                .documentData(docToByte(kycData.getDocumentData()))
-                .userImage(docToByte(kycData.getUserImage()))
-                .docSize(docToByte(kycData.getDocumentData()).length)
-                .userImgSize(docToByte(kycData.getUserImage()).length)
-                .build();
-        return kycDocData;
+            KYCDocData kycDocumentData = new KYCDocData().builder()
+                    .documentData(docToByte(kycData.getDocumentData()))
+                    .userImage(docToByte(kycData.getUserImage()))
+                    .docSize(docToByte(kycData.getDocumentData()).length)
+                    .userImgSize(docToByte(kycData.getUserImage()).length)
+                    .build();
+            return kycDocumentData;
+
+
+
+
+        }
+        else{
+            return "KYC data with id " + id + " not found";
+        }
+
     }
 
 
@@ -161,10 +174,10 @@ public class KYCService {
     public Optional<KYCDataResDto> getUserKYCDataById(Integer id, Authentication authentication) {
 
         //get KYC user details if present kycid exists in KYC db
-        if (kycRepository.findByuserId(id).isPresent()) {
+        if (kycRepository.findKYCById(id)!=null) {
 
 
-            KYC kyc = kycRepository.findByuserId(id).get();
+            KYC kyc = kycRepository.findKYCById(id);
 
             KYCDataResDto kycResponse = KYCDataResDto.builder()
                     .email(kyc.getUser().getUsername())

@@ -10,7 +10,7 @@ import lombok.*;
 @Builder
 @ToString
 public class OtpRequest {
-    public String userEmail;
-    public String userEnteredOtp;
+    public String email;
+    public String otp;
 
 }

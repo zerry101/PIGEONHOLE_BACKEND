@@ -2,15 +2,15 @@ package com.appbackend.example.AppBackend.models;
 
 import lombok.*;
 
+@Data
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class User {
-
-    private String userid;
-    private String name;
-    private  String email;
+public class SuccessDto {
+    private int code;
+    private String status;
+    private String message;
 }
-

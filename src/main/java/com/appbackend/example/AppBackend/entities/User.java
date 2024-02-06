@@ -30,8 +30,10 @@
         @Id
         private Integer id;
 
+        @Column(nullable = false)
         private String firstName;
 
+        @Column(nullable = false)
         private String lastName;
 
         private Instant loginTimeStamp;
@@ -100,5 +102,16 @@
             return true;
         }
 
+        public void setRoleByInput(int input){
+            if(input==1){
+                this.role=Role.ADMIN;
+            }
+            else if(input==2){
+                this.role=Role.USER;
+            }
+            else {
+                throw new IllegalArgumentException("Invalid input. Only 1 (ADMIN) or 2 (USER) are allowed.");
+            }
+        }
 
     }

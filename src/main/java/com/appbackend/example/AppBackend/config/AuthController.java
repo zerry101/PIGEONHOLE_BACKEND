@@ -38,7 +38,6 @@ import java.util.concurrent.CompletableFuture;
 //import java.util.concurrent.TimeUnit;
 
 
-
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -103,13 +102,15 @@ public class AuthController {
 //        Object user =this.authentication.getName();
 
 //        System.out.println(user);
-        return new ResponseEntity<>("OTP HAS BEEN SEND TO "+authentication.getName(), HttpStatus.OK);
+
+        SuccessDto successDto = SuccessDto.builder().code(HttpStatus.OK.value()).status("SUCCESS").message("OTP HAS BEEN SEND TO " + authentication.getName()).build();
+        return ResponseEntity.status(HttpStatus.OK).body(successDto);
     }
 
 
     @Async
     @PostMapping("/verifyotp")
-    public ResponseEntity<?> verifyUserOtp(@RequestBody OtpRequest otpRequest,@CurrentSecurityContext SecurityContext context) {
+    public ResponseEntity<?> verifyUserOtp(@RequestBody OtpRequest otpRequest, @CurrentSecurityContext SecurityContext context) {
 //            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
 //            Principal principal ;
@@ -118,64 +119,60 @@ public class AuthController {
 //            System.out.println("This is ");
 //            System.out.println(context.getAuthentication().getName());
         try {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(otpRequest.getUserEmail());
-            User user=userRepository.findByEmail(userDetails.getUsername()).get();
+            UserDetails userDetails = userDetailsService.loadUserByUsername(otpRequest.getEmail());
+            User user = userRepository.findByEmail(otpRequest.getEmail()).get();
 
 
-            emailOtpService.verifyOtp(otpRequest.userEnteredOtp,user);
+            emailOtpService.verifyOtp(otpRequest.otp, user);
 
-            System.out.println(emailOtpService.verifyOtp(otpRequest.userEnteredOtp,user));
+            System.out.println(emailOtpService.verifyOtp(otpRequest.otp, user));
 
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
 
 
-            CompletableFuture<String> jwtfuture=CompletableFuture.supplyAsync(()->{
-                System.out.println("generating jwt");
-                return this.jwtHelper.generateToken(userDetails);
-            });
+//            CompletableFuture<String> jwtfuture = CompletableFuture.supplyAsync(() -> {
+//                System.out.println("generating jwt");
+//                return this.jwtHelper.generateToken(userDetails);
+//            });
+//
+//            ResponseEntity<?> responseEntity = jwtfuture.thenApply(jwt -> {
+//                JwtResponse response1 = JwtResponse.builder().jwtToken(jwt)
+//                        .refreshTokenString(refreshToken.getRefreshTokenString())
+//                        .username(userDetails.getUsername())
+//                        .build();
+//
+//                System.out.println("Sending JWT: " + jwt);
+//                return new ResponseEntity<>(response1, HttpStatus.OK);
+//            }).exceptionally(error -> {
+//                System.out.println("Error generating JWT: " + error.getMessage());
+//                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+//            }).join();
+//
+//            CompletableFuture.runAsync(() -> {
+//
+//                long startTime = System.currentTimeMillis();
+//                long endTime = startTime + 10000; // Delay for 10 second
+//                while (System.currentTimeMillis() < endTime) {
+//                    // Wait for 1 second
+//                }
+//                System.out.println("Hello World!");
+//
+//            });
 
-            ResponseEntity<?> responseEntity=jwtfuture.thenApply(jwt->{
-                JwtResponse response1=JwtResponse.builder() .jwtToken(jwt)
-                        .refreshTokenString(refreshToken.getRefreshTokenString())
-                        .username(userDetails.getUsername())
-                        .build();
-
-                System.out.println("Sending JWT: " + jwt);
-                return new ResponseEntity<>(response1, HttpStatus.OK);
-            }).exceptionally(error->{
-                System.out.println("Error generating JWT: " + error.getMessage());
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }).join();
-
-            CompletableFuture.runAsync(() -> {
-
-                    long startTime = System.currentTimeMillis();
-                    long endTime = startTime + 10000; // Delay for 10 second
-                    while (System.currentTimeMillis() < endTime) {
-                        // Wait for 1 second
-                    }
-                    System.out.println("Hello World!");
-
-            });
-
-//            String token = this.jwtHelper.generateToken(userDetails);
-
-
-//            JwtResponse response = JwtResponse.builder().jwtToken(token).refreshTokenString(refreshToken.getRefreshTokenString()).username(userDetails.getUsername()).build();
+            String token = this.jwtHelper.generateToken(userDetails);
 
 
+            JwtResponse response = JwtResponse.builder().jwtToken(token).refreshTokenString(refreshToken.getRefreshTokenString()).username(userDetails.getUsername()).build();
 
 
-
-//            return new ResponseEntity<>(response, HttpStatus.OK);
-            return  responseEntity;
-
-
+            return new ResponseEntity<>(response, HttpStatus.OK);
+//            return responseEntity;
 
 
 //            return  new ResponseEntity<>("You are successfully logged in",HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
         }
 
 
@@ -187,10 +184,27 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
-        Optional<User> duplicateEmailUser = userService.getUserByEmail(registerRequest.getEmail());
-        Optional<User> duplicateIdUser = userService.getUserById(registerRequest.getId());
+
 
         try {
+
+
+            if (registerRequest.getRole() < 1 && registerRequest.getRole() > 2) {
+                throw new Exception("Invalid input. Only 1 (ADMIN) or 2 (USER) are allowed.");
+            }
+
+            if (registerRequest.getEmail().trim().isEmpty()) {
+                throw new Exception("Email Field must not be null");
+            }
+
+            if (registerRequest.getId() == null) {
+                throw new Exception("ID Field must not be null");
+            }
+
+            Optional<User> duplicateEmailUser = userService.getUserByEmail(registerRequest.getEmail());
+
+            Optional<User> duplicateIdUser = userService.getUserById(registerRequest.getId());
+
             if (duplicateEmailUser.isPresent()) {
                 throw new DuplicateUserException("USER WITH THIS EMAIL ID ALREADY EXISTS");
             }
@@ -199,8 +213,9 @@ public class AuthController {
                 throw new DuplicateUserException("USER WITH THIS  ID ALREADY EXISTS");
             }
 
+            var user = User.builder().id(registerRequest.getId()).firstName(registerRequest.getFirstname()).lastName(registerRequest.getLastname()).email(registerRequest.getEmail()).password(passwordEncoder.encode(registerRequest.getPassword())).phoneNumber(registerRequest.getPhoneNumber()).build();
 
-            var user = User.builder().id(registerRequest.getId()).firstName(registerRequest.getFirstname()).lastName(registerRequest.getLastname()).email(registerRequest.getEmail()).password(passwordEncoder.encode(registerRequest.getPassword())).phoneNumber(registerRequest.getPhoneNumber()).role(Role.valueOf(registerRequest.getRole())).build();
+            user.setRoleByInput(registerRequest.getRole());
 
             userRepository.save(user);
 
@@ -213,8 +228,12 @@ public class AuthController {
         } catch (DuplicateUserException e) {
 
             String errorResponse = e.getMessage();
-            return ResponseEntity.badRequest().body(errorResponse);
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
 
+        } catch (Exception e) {
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
         }
 
 
@@ -240,7 +259,7 @@ public class AuthController {
         try {
             authenticationManager.authenticate(authentication);
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            this.authentication=authentication;
+            this.authentication = authentication;
 
         } catch (BadCredentialsException e) {
             throw new BadCredentialsException("INVALID USERNAME OR PASSWORD");

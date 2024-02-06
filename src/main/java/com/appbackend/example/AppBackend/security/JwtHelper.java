@@ -22,7 +22,7 @@ import java.util.function.Function;
 @Component
 public class JwtHelper {
 
-    private static final long JWT_TOKEN_VALIDITY = 12*60*60;
+    private static final long JWT_TOKEN_VALIDITY = 60*60;
 
     private String secret = "/9BWSsgc1ZJjLixZ512uz/5SFC95oIKCi5FW36BMdvbmtgv74xs3fWymweoCzIeqZUBeMM7LcqMHDaq8DjJc+Jc1RxZViF8I";
 
