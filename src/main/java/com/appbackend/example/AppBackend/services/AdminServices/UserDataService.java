@@ -5,9 +5,9 @@ import com.appbackend.example.AppBackend.entities.User;
 import com.appbackend.example.AppBackend.models.ErrorDto;
 import com.appbackend.example.AppBackend.models.UserListData;
 import com.appbackend.example.AppBackend.repositories.UserRepository;
-import org.hibernate.query.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.data.web.SpringDataWebProperties;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -35,10 +35,12 @@ public class UserDataService {
             return new UserListData(null,errorDto);
 
         }
-        Pageable paging= PageRequest.of(pageNo,pageSize, Sort.by(sortBy));
-        List<User> userList=userRepository.findAll(paging).getContent();
+            PageRequest pageRequest= PageRequest.of(pageNo,pageSize, Sort.by(sortBy));
+            Page<User> userPage=userRepository.findAll(pageRequest);
+//        List<User> userList=userPage.getContent();
 
-        return new UserListData(userList,null);
+        return new UserListData(userPage,null);
+
 
 
 

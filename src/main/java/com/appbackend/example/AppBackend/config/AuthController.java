@@ -26,6 +26,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
@@ -77,16 +78,17 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody JwtRequest request) {
+        try {
 
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
+            UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
 
-        this.doAuthenticate(request.getEmail(), request.getPassword());
+            this.doAuthenticate(request.getEmail(), request.getPassword());
 
 //        Here saveOtp method  of emailOtpService will return an otp string
 
-        String otp = emailOtpService.saveOtp((User) userDetails);
-        emailOtpService.sendVerificationOtpEmail(userDetails.getUsername(), otp);
+            String otp = emailOtpService.saveOtp((User) userDetails);
+            emailOtpService.sendVerificationOtpEmail(userDetails.getUsername(), otp);
 
 
 //        RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
@@ -103,8 +105,16 @@ public class AuthController {
 
 //        System.out.println(user);
 
-        SuccessDto successDto = SuccessDto.builder().code(HttpStatus.OK.value()).status("SUCCESS").message("OTP HAS BEEN SEND TO " + authentication.getName()).build();
-        return ResponseEntity.status(HttpStatus.OK).body(successDto);
+            SuccessDto successDto = SuccessDto.builder().code(HttpStatus.OK.value()).status("SUCCESS").message("OTP HAS BEEN SEND TO " + authentication.getName()).build();
+            return ResponseEntity.status(HttpStatus.OK).body(successDto);
+        } catch (UsernameNotFoundException e) {
+
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.NOT_FOUND.value())
+                    .status("ERROR")
+                    .message("USER WITH EMAIL " + request.getEmail() + " IS NOT FOUND ").build();
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDto);
+        }
     }
 
 
@@ -240,14 +250,27 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<JwtResponse> refreshJWTtoken(@RequestBody RefreshTokenRequest request) {
-        RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(request.getRefreshTokenString());
+    public ResponseEntity<?> refreshJWTtoken(@RequestBody RefreshTokenRequest request) {
 
-        User user = refreshToken.getUser();
+        try {
+            RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(request.getRefreshTokenString());
 
-        JwtResponse jwtResponse = JwtResponse.builder().refreshTokenString(refreshToken.getRefreshTokenString()).jwtToken(jwtHelper.generateToken(user)).username(user.getUsername()).build();
 
-        return new ResponseEntity<>(jwtResponse, HttpStatus.OK);
+            User user = refreshToken.getUser();
+
+            JwtResponse jwtResponse = JwtResponse.builder().refreshTokenString(refreshToken.getRefreshTokenString()).jwtToken(jwtHelper.generateToken(user)).username(user.getUsername()).build();
+
+            return new ResponseEntity<>(jwtResponse, HttpStatus.OK);
+
+
+        } catch (Exception e) {
+
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.UNAUTHORIZED.value())
+                    .status("ERROR")
+                    .message("REFRESH TOKEN HAS BEEN EXPIRED").build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorDto);
+
+        }
 
 
     }
