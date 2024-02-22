@@ -9,16 +9,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 @EntityScan
 
 @EnableWebSecurity
+
 public class AppBackendApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(AppBackendApplication.class, args);
     }
-
-
-
-
-
 
 
 }

@@ -67,7 +67,7 @@ public class EmailOtpService {
 
 //            User savedUser=userRepository.findByEmail(reqUserEmail).get();
 
-        if (Duration.between(savedUser.getOtpGeneratedTime(), Instant.now()).getSeconds() < 60) {
+        if (Duration.between(savedUser.getOtpGeneratedTime(), Instant.now()).getSeconds() < 120) {
             if (reqUserOtp.equals(savedUser.getOtp())) {
                 savedUser.setLoginTimeStamp(Instant.now());
                 return "you are logged in successfully";

@@ -1,10 +1,19 @@
 package com.appbackend.example.AppBackend.services.AdminServices;
 
+import com.appbackend.example.AppBackend.entities.CreditScore;
+import com.appbackend.example.AppBackend.entities.User;
+import com.appbackend.example.AppBackend.repositories.CreditScoreRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
+import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +21,15 @@ import java.util.Map;
 @PreAuthorize("hasRole('ADMIN')")
 public class CreditScoreService {
 
+    @Autowired
+    CreditScoreRepository creditScoreRepository;
+
     public void calculateCreditScore(Map<String, Map<String, Object>> objectMap) {
+
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        System.out.println(user.getFirstName());
+
 
         int VERY_LOW_RISK = 1;
         int LOW_RISK = 2;
@@ -108,23 +125,117 @@ public class CreditScoreService {
 
         int totalCreditScoreValue = totalCreditScore * 5;
 
-        float averageCreditScoreValue= totalCreditScoreValue/13;
+        float averageCreditScoreValue = totalCreditScoreValue / 13;
 
         float availableOffer = (float) (Math.ceil((totalExposure / 100) * offerPerLevel / 1000.0) * 1000);
 
 
+        System.out.println(" total weight " + totalWeight);
+        System.out.println(" total score " + totalCreditScore);
+        System.out.println("  total exposure " + totalExposure);
+        System.out.println(" average credit score " + averageCreditScoreValue);
+        System.out.println("  credit score value " + totalCreditScoreValue);
+        System.out.println(" available offer " + availableOffer);
 
-        System.out.println(" total weight "+totalWeight);
-        System.out.println(" total score "+totalCreditScore);
-        System.out.println("  total exposure "+totalExposure);
-        System.out.println(" average credit score "+averageCreditScoreValue);
-        System.out.println("  credit score value "+totalCreditScoreValue);
-        System.out.println(" available offer "+availableOffer);
+
+        String blacklistedObj = objectMaker(blacklistedScore, blacklistedWeight, blacklistedExposure);
+        String departmentObj = objectMaker(departmentScore, departmentWeight, departmentExposure);
+        String salaryScaleObj = objectMaker(salaryScaleScore, salaryScaleWeight, salaryScaleExposure);
+        String priorityClientObj = objectMaker(priorityClientScore, priorityClientWeight, priorityClientExposure);
+        String securityObj = objectMaker(securityScore, securityWeight, securityClientExposure);
+
+        CreditScore creditScore = CreditScore.builder()
+                .user(user)
+                .id(user.getId())
+                .blacklisted(String.valueOf(blacklistedObj))
+                .workPlaceDeartment(String.valueOf(departmentObj))
+                .salaryScale(String.valueOf(salaryScaleObj))
+                .priorityClient(String.valueOf(priorityClientObj))
+                .security(String.valueOf(securityObj))
+                .build();
+
+        System.out.println(blacklistedObj);
+        System.out.println(departmentObj);
+        System.out.println(salaryScaleObj);
+        System.out.println(priorityClientObj);
+        System.out.println(securityObj);
 
 
+        creditScoreRepository.save(creditScore);
 
 
     }
 
+    public String objectMaker(int score, int weight, float exposure) {
+
+        Map<String, Object> objMap = new HashMap<>();
+
+        objMap.put("weight", weight);
+        objMap.put("score", score);
+        objMap.put("exposure", exposure);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+
+            return objectMapper.writeValueAsString(objMap);
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+
+    }
+
+    public int calculateAgeCreditScore(int age) {
+
+        if (age >= 19 && age <= 40) {
+            return 2;
+        }
+        if (age >= 41 && age <= 57) {
+            return 3;
+        }
+        if (age >= 58 && age <= 60) {
+            return 4;
+        }
+        return 0;
+    }
+
+    public int calculateGenderCreditScore(String gender) {
+        if (gender.equals("MALE")) {
+            return 3;
+        }
+        if (gender.equals("FEMALE")) {
+            return 2;
+        }
+
+        return 0;
+
+    }
+
+    public int calculateNextOfKin(String kin) {
+
+        if (kin.equals("SPOUSE")) {
+            return 2;
+        }
+        if (kin.equals("WORK MATE")) {
+            return 3;
+        }
+        if (kin.equals("RELATIVE")) {
+            return 3;
+        }
+        if (kin.equals("FRIEND")) {
+            return 4;
+        }
+
+        return 0;
+
+
+    }
 
 }
+
+
+
+

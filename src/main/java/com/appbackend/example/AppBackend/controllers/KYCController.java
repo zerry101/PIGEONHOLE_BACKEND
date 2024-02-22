@@ -90,17 +90,19 @@ public class KYCController {
     }
 
 
+
     @PostMapping(value = "/submitData", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<KYCDataResDto> kycSubmit(@RequestParam(value = "kycRequest", required = false) String kycRequestString,
                                                    @RequestParam(value = "documentData", required = false) MultipartFile documentData,
-                                                   @RequestParam(value = "userImage", required = false) MultipartFile userImage) throws IOException {
+                                                   @RequestParam(value = "userImage", required = false) MultipartFile userImage,
+                                                   @RequestParam(value = "userImage", required = false) MultipartFile digitalSignature) throws IOException {
 
 
         ObjectMapper mapper = new ObjectMapper();
 
         KYCDataResDto kycRequest = mapper.readValue(kycRequestString, KYCDataResDto.class);
 
-        KYCDataResDto kycResponse = kycService.saveUserKYC(kycRequest, documentData, userImage);
+        KYCDataResDto kycResponse = kycService.saveUserKYC(kycRequest, documentData, userImage,digitalSignature);
 
         return new ResponseEntity<>(kycResponse, HttpStatus.OK);
 

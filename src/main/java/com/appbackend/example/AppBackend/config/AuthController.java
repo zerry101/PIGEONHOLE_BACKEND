@@ -1,19 +1,25 @@
 package com.appbackend.example.AppBackend.config;
 
+import com.appbackend.example.AppBackend.entities.KYC;
 import com.appbackend.example.AppBackend.entities.RefreshToken;
 import com.appbackend.example.AppBackend.entities.Role;
 import com.appbackend.example.AppBackend.entities.User;
 import com.appbackend.example.AppBackend.models.*;
+import com.appbackend.example.AppBackend.repositories.KYCRepository;
 import com.appbackend.example.AppBackend.repositories.RefreshTokenRepository;
 import com.appbackend.example.AppBackend.repositories.UserRepository;
 import com.appbackend.example.AppBackend.services.EmailOtpService;
 import com.appbackend.example.AppBackend.services.RefreshTokenService;
 import com.appbackend.example.AppBackend.services.UserService;
+import com.appbackend.example.AppBackend.utils.ImageUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.appbackend.example.AppBackend.security.JwtHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +36,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.time.Instant;
@@ -54,6 +61,9 @@ public class AuthController {
 
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Autowired
+    private KYCRepository kycRepository;
 
 
 //    @Autowired
@@ -109,9 +119,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.OK).body(successDto);
         } catch (UsernameNotFoundException e) {
 
-            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.NOT_FOUND.value())
-                    .status("ERROR")
-                    .message("USER WITH EMAIL " + request.getEmail() + " IS NOT FOUND ").build();
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.NOT_FOUND.value()).status("ERROR").message("USER WITH EMAIL " + request.getEmail() + " IS NOT FOUND ").build();
 
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDto);
         }
@@ -192,8 +200,14 @@ public class AuthController {
 
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
+    @PostMapping(value = "/register", consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
+    public ResponseEntity<?> register(@RequestParam(value = "registerRequest", required = true) String registerRequestString, @RequestParam(value = "documentData", required = false) MultipartFile documentData) throws JsonProcessingException {
+
+
+//        System.out.println("DOC DATA IS HERE ------>  "+documentData);
+
+        ObjectMapper mapper = new ObjectMapper();
+        RegisterRequest registerRequest = mapper.readValue(registerRequestString, RegisterRequest.class);
 
 
         try {
@@ -223,23 +237,43 @@ public class AuthController {
                 throw new DuplicateUserException("USER WITH THIS  ID ALREADY EXISTS");
             }
 
-            var user = User.builder().id(registerRequest.getId()).firstName(registerRequest.getFirstname()).lastName(registerRequest.getLastname()).email(registerRequest.getEmail()).password(passwordEncoder.encode(registerRequest.getPassword())).phoneNumber(registerRequest.getPhoneNumber()).build();
+
+            User user = User.builder().id(registerRequest.getId()).firstName(registerRequest.getFirstname()).lastName(registerRequest.getLastname()).email(registerRequest.getEmail()).password(passwordEncoder.encode(registerRequest.getPassword())).phoneNumber(registerRequest.getPhoneNumber()).build();
 
             user.setRoleByInput(registerRequest.getRole());
 
             userRepository.save(user);
 
+            if (registerRequest.getRole() == 2) {
+
+                if (documentData == null) {
+                    throw new Exception("WORK ID DOCUMENT IS REQUIRED KINDLY UPLOAD IT");
+                } else {
+                    KYC kyc = KYC.builder().user(user).id(user.getId()).documentData(ImageUtils.compressImage(documentData.getBytes())).build();
+
+                    kycRepository.save(kyc);
+
+                }
+            }
+
+
+
+
+
 //
 //            var token = jwtHelper.generateToken(user);
 
+            SuccessDto successDto = SuccessDto.builder().code(HttpStatus.OK.value()).status("success").message("USER  HAVE BEEN SUCCESSFULLY REGISTERED").build();
 
-            return ResponseEntity.ok("USER  HAVE BEEN SUCCESSFULLY REGISTERED");
+
+            return ResponseEntity.status(HttpStatus.OK).body(successDto);
+
 
         } catch (DuplicateUserException e) {
 
             String errorResponse = e.getMessage();
-            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.CONFLICT.value()).status("ERROR").message(e.getMessage()).build();
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorDto);
 
         } catch (Exception e) {
             ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
@@ -265,9 +299,7 @@ public class AuthController {
 
         } catch (Exception e) {
 
-            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.UNAUTHORIZED.value())
-                    .status("ERROR")
-                    .message("REFRESH TOKEN HAS BEEN EXPIRED").build();
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.UNAUTHORIZED.value()).status("ERROR").message("REFRESH TOKEN HAS BEEN EXPIRED").build();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorDto);
 
         }
@@ -293,8 +325,10 @@ public class AuthController {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public String exceptionHandler() {
-        return "CREDENTIALS ARE INVALID";
+    public ResponseEntity exceptionHandler() {
+
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorDto.builder().code(HttpStatus.UNAUTHORIZED.value()).message("CREDENTIALS ARE INVALID").status("ERROR").build());
     }
 
 
