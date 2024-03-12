@@ -3,6 +3,7 @@ package com.appbackend.example.AppBackend.services.AdminServices;
 import com.appbackend.example.AppBackend.entities.CreditScore;
 import com.appbackend.example.AppBackend.entities.User;
 import com.appbackend.example.AppBackend.repositories.CreditScoreRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,12 @@ public class CreditScoreService {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         System.out.println(user.getFirstName());
+
+        CreditScore existingcreditScore = creditScoreRepository.findCreditScoreById(user.getId());
+        int storedCreditScore = existingcreditScore.getTotalCreditScore();
+        if (storedCreditScore != 0) {
+
+        }
 
 
         int VERY_LOW_RISK = 1;
@@ -84,29 +91,31 @@ public class CreditScoreService {
         creditFactorsMap.put("KYIBANJA ", MODERATE_RISK);
         creditFactorsMap.put("NO SECURITY ", VERY_HIGH_RISK);
 
+//        1
         String blacklisted = (String) objectMap.get("BLACK_LISTED").get("type");
         Integer blacklistedWeight = (int) objectMap.get("BLACK_LISTED").get("weight");
         Integer blacklistedScore = creditFactorsMap.get(blacklisted);
         float blacklistedExposure = blacklistedWeight > 0 ? (1 / (float) blacklistedScore) * blacklistedWeight : ((float) (blacklistedScore - 1) / 4) * blacklistedWeight;
 
-
+//2
         String department = (String) objectMap.get("DEPARTMENTS").get("type");
         Integer departmentWeight = (int) objectMap.get("DEPARTMENTS").get("weight");
         Integer departmentScore = creditFactorsMap.get(department);
         float departmentExposure = departmentWeight > 0 ? (1 / (float) departmentScore) * departmentWeight : ((float) (departmentScore - 1) / 4) * departmentWeight;
 
-
+//3
         String salaryScale = (String) objectMap.get("SALARY_SCALE").get("type");
         Integer salaryScaleWeight = (int) objectMap.get("SALARY_SCALE").get("weight");
         Integer salaryScaleScore = creditFactorsMap.get(salaryScale);
         float salaryScaleExposure = salaryScaleWeight > 0 ? (1 / (float) salaryScaleScore) * salaryScaleWeight : ((float) (salaryScaleScore - 1) / 4) * salaryScaleWeight;
 
-
+//4
         String priorityClient = (String) objectMap.get("PRIORITY_CLIENT").get("type");
         Integer priorityClientWeight = (int) objectMap.get("PRIORITY_CLIENT").get("weight");
         Integer priorityClientScore = creditFactorsMap.get(priorityClient);
         float priorityClientExposure = priorityClientWeight > 0 ? (1 / (float) priorityClientScore) * priorityClientWeight : ((float) (priorityClientScore - 1) / 4) * priorityClientWeight;
 
+//        5
         String security = (String) objectMap.get("SECURITY").get("type");
         Integer securityWeight = (int) objectMap.get("SECURITY").get("weight");
         Integer securityScore = creditFactorsMap.get(security);
@@ -115,7 +124,29 @@ public class CreditScoreService {
         Integer offerPerLevel = (Integer) objectMap.get("OFFER_PER_LEVEL").get("value");
 
 
-        int totalCreditScore = blacklistedScore + departmentScore + salaryScaleScore + priorityClientScore + securityScore;
+        ObjectMapper objectMapper = new ObjectMapper();
+
+//        String storedAgeCreditScoreStrr=existingcreditScore.getAge();
+        Map<String, Object> storedAgeCreditObj = null;
+        Map<String, Object> storedGenderCreditObj = null;
+        Map<String, Object> storedKinCreditObj = null;
+
+        try {
+            storedAgeCreditObj = objectMapper.readValue(existingcreditScore.getAge(), Map.class);
+            storedGenderCreditObj = objectMapper.readValue(existingcreditScore.getGender(), Map.class);
+            storedKinCreditObj = objectMapper.readValue(existingcreditScore.getNextOfKinType(), Map.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        int storedAgeCreditScore = (int) storedAgeCreditObj.get("score");
+        int storedGenderCreditScore = (int) storedGenderCreditObj.get("score");
+        int storedKinCreditScore = (int) storedKinCreditObj.get("score");
+
+
+        System.out.println(storedAgeCreditObj);
+        System.out.println("AGE OBJ IS HERE " + storedAgeCreditScore + "--------------");
+
+        int totalCreditScore = storedAgeCreditScore + storedGenderCreditScore + storedKinCreditScore + blacklistedScore + departmentScore + salaryScaleScore + priorityClientScore + securityScore;
         System.out.println(totalCreditScore);
 
         int totalWeight = blacklistedWeight + departmentWeight + salaryScaleWeight + priorityClientWeight + securityWeight;
@@ -125,7 +156,7 @@ public class CreditScoreService {
 
         int totalCreditScoreValue = totalCreditScore * 5;
 
-        float averageCreditScoreValue = totalCreditScoreValue / 13;
+        float averageCreditScoreValue = totalCreditScoreValue / 5;
 
         float availableOffer = (float) (Math.ceil((totalExposure / 100) * offerPerLevel / 1000.0) * 1000);
 
@@ -144,15 +175,29 @@ public class CreditScoreService {
         String priorityClientObj = objectMaker(priorityClientScore, priorityClientWeight, priorityClientExposure);
         String securityObj = objectMaker(securityScore, securityWeight, securityClientExposure);
 
-        CreditScore creditScore = CreditScore.builder()
-                .user(user)
-                .id(user.getId())
-                .blacklisted(String.valueOf(blacklistedObj))
-                .workPlaceDeartment(String.valueOf(departmentObj))
-                .salaryScale(String.valueOf(salaryScaleObj))
-                .priorityClient(String.valueOf(priorityClientObj))
-                .security(String.valueOf(securityObj))
-                .build();
+
+        existingcreditScore.setAverageCreditScoreValue(averageCreditScoreValue);
+        existingcreditScore.setTotalCreditScore(totalCreditScoreValue);
+        existingcreditScore.setBlacklisted(String.valueOf(blacklistedObj));
+        existingcreditScore.setSalaryScale(String.valueOf(salaryScaleObj));
+        existingcreditScore.setPriorityClient(String.valueOf(priorityClientObj));
+        existingcreditScore.setSecurity(String.valueOf(securityObj));
+        existingcreditScore.setTotalExposure(totalExposure);
+        existingcreditScore.setWorkPlaceDeartment(String.valueOf(departmentObj));
+        existingcreditScore.setAvailableOffer(availableOffer);
+        existingcreditScore.setTotalWeight(totalWeight);
+
+
+//        CreditScore creditScore = CreditScore.builder()
+//                .user(user)
+//                .id(user.getId())
+//                .age(existingcreditScore.getAge())
+//                .blacklisted(String.valueOf(blacklistedObj))
+//                .workPlaceDeartment(String.valueOf(departmentObj))
+//                .salaryScale(String.valueOf(salaryScaleObj))
+//                .priorityClient(String.valueOf(priorityClientObj))
+//                .security(String.valueOf(securityObj))
+//                .build();
 
         System.out.println(blacklistedObj);
         System.out.println(departmentObj);
@@ -161,7 +206,7 @@ public class CreditScoreService {
         System.out.println(securityObj);
 
 
-        creditScoreRepository.save(creditScore);
+        creditScoreRepository.save(existingcreditScore);
 
 
     }

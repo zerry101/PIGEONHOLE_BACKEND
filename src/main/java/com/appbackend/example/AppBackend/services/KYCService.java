@@ -62,7 +62,7 @@ public class KYCService {
 
         if (existingKyc != null) {
 
-            if (kycRequest.getDob() != null && existingKyc.getDob() == null) {
+            if (kycRequest.getDob() != null &&  existingKyc.getDob() == null) {
                 existingKyc.setDob(kycRequest.getDob());
 
             }
@@ -170,7 +170,7 @@ public class KYCService {
                 .averageCreditScoreValue(averageCreditScoreValue)
                 .build();
 
-creditScoreRepository.save(creditScore);
+        creditScoreRepository.save(creditScore);
 
         if (userImage != null) {
             kyc.setUserImage(ImageUtils.compressImage(userImage.getBytes()));

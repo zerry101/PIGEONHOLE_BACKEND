@@ -35,6 +35,7 @@ public class UserDataService {
             return new UserListData(null,errorDto);
 
         }
+
             PageRequest pageRequest= PageRequest.of(pageNo,pageSize, Sort.by(sortBy));
             Page<User> userPage=userRepository.findAll(pageRequest);
 //        List<User> userList=userPage.getContent();

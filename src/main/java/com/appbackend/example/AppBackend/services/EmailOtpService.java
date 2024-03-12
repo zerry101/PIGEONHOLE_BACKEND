@@ -85,6 +85,39 @@ public class EmailOtpService {
 
     }
 
+    public String verifyFpwOtp(String reqUserOtp, User savedUser) {
+
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+//        UserDetails userDetails = userDetailsService.loadUserByUsername(otpRequest.getUserEmail());
+
+
+//        System.out.println(reqUserEmail.equals(authentication.getName()));
+//        System.out.println("reqUserEmail"+reqUserEmail);
+//        System.out.println("authuser"+authentication.getName());
+
+//        if(reqUserEmail.equals(savedUser.getUsername())){
+
+//            User savedUser=userRepository.findByEmail(reqUserEmail).get();
+
+        if (Duration.between(savedUser.getOtpGeneratedTime(), Instant.now()).getSeconds() < 120) {
+            if (reqUserOtp.equals(savedUser.getOtp())) {
+//                savedUser.setLoginTimeStamp(Instant.now());
+                return "now you can change your password ";
+            } else {
+                throw new RuntimeException("otp is Invalid ");
+            }
+        } else {
+            throw new RuntimeException("your one-time password (otp) has expired");
+        }
+
+//        }
+//        else {
+//            throw new RuntimeException("The user email is not found");
+//        }
+
+    }
+
     public String generateOtp() {
         SecureRandom secureRandom = new SecureRandom();
         int otpValue = 1000 + secureRandom.nextInt(8999);

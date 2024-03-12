@@ -2,9 +2,11 @@ package com.appbackend.example.AppBackend.config;
 
 import com.appbackend.example.AppBackend.entities.KYC;
 import com.appbackend.example.AppBackend.entities.RefreshToken;
-import com.appbackend.example.AppBackend.entities.Role;
 import com.appbackend.example.AppBackend.entities.User;
 import com.appbackend.example.AppBackend.models.*;
+import com.appbackend.example.AppBackend.models.ForgotPasswordModel.ChangePassword;
+import com.appbackend.example.AppBackend.models.ForgotPasswordModel.FpOtpReq;
+import com.appbackend.example.AppBackend.models.ForgotPasswordModel.FpOtpVerify;
 import com.appbackend.example.AppBackend.repositories.KYCRepository;
 import com.appbackend.example.AppBackend.repositories.RefreshTokenRepository;
 import com.appbackend.example.AppBackend.repositories.UserRepository;
@@ -26,7 +28,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,14 +35,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.security.Principal;
-import java.time.Instant;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 //import java.util.concurrent.TimeUnit;
 
@@ -143,6 +140,7 @@ public class AuthController {
 
             emailOtpService.verifyOtp(otpRequest.otp, user);
 
+
             System.out.println(emailOtpService.verifyOtp(otpRequest.otp, user));
 
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
@@ -196,9 +194,86 @@ public class AuthController {
 
     }
 
-    {
+
+    @PostMapping("/forgotPasswordOtp")
+    public ResponseEntity<?> forgotPassword(@RequestBody FpOtpReq fpOtpReq) {
+//
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(fpOtpReq.getEmail());
+            User user = userRepository.findByEmail(fpOtpReq.getEmail()).get();
+
+
+            String otp = emailOtpService.saveOtp((User) userDetails);
+            emailOtpService.sendVerificationOtpEmail(userDetails.getUsername(), otp);
+
+
+            String response = "OTP HAS BEEN SEND TO " + " " + user.getEmail();
+            SuccessDto successDto = SuccessDto.builder().message(response).code(HttpStatus.OK.value()).status("SUCCESS").build();
+            return ResponseEntity.status(HttpStatus.OK).body(successDto);
+
+
+//            return  new ResponseEntity<>("You are successfully logged in",HttpStatus.OK);
+        } catch (Exception e) {
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
+        }
+
 
     }
+
+    @PostMapping("/forgotPasswordOtpVerify")
+    public ResponseEntity<?> forgotPasswordOtpVerify(@RequestBody FpOtpVerify fpOtpVerify) {
+//
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(fpOtpVerify.getEmail());
+            User user = userRepository.findByEmail(fpOtpVerify.getEmail()).get();
+
+
+            String response = emailOtpService.verifyFpwOtp(fpOtpVerify.getOtp(), user);
+
+            System.out.println(response);
+
+            SuccessDto successDto = SuccessDto.builder().status("SUCCESS").message(response).code(HttpStatus.OK.value()).build();
+
+            return ResponseEntity.status(HttpStatus.OK).body(successDto);
+
+
+//            return  new ResponseEntity<>("You are successfully logged in",HttpStatus.OK);
+        } catch (Exception e) {
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
+        }
+
+
+    }
+
+    @PostMapping("/changePassword")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePassword changePassword) {
+//
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(changePassword.getEmail());
+            User user = userRepository.findByEmail(changePassword.getEmail()).get();
+
+
+            user.setPassword(passwordEncoder.encode(changePassword.getPassword()));
+
+            userRepository.save(user);
+
+
+            SuccessDto successDto = SuccessDto.builder().status("SUCCESS").message("YOUR PASSWORD HAS BEEN CHANGED SUCCESSFULLY").code(HttpStatus.OK.value()).build();
+
+            return ResponseEntity.status(HttpStatus.OK).body(successDto);
+
+
+//            return  new ResponseEntity<>("You are successfully logged in",HttpStatus.OK);
+        } catch (Exception e) {
+            ErrorDto errorDto = ErrorDto.builder().code(HttpStatus.BAD_REQUEST.value()).status("ERROR").message(e.getMessage()).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
+        }
+
+
+    }
+
 
     @PostMapping(value = "/register", consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<?> register(@RequestParam(value = "registerRequest", required = true) String registerRequestString, @RequestParam(value = "documentData", required = false) MultipartFile documentData) throws JsonProcessingException {
@@ -255,9 +330,6 @@ public class AuthController {
 
                 }
             }
-
-
-
 
 
 //
@@ -326,6 +398,7 @@ public class AuthController {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity exceptionHandler() {
+
 
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorDto.builder().code(HttpStatus.UNAUTHORIZED.value()).message("CREDENTIALS ARE INVALID").status("ERROR").build());
