@@ -18,6 +18,8 @@ public class KYCDataResDto {
     private String lastName;
     private String email;
     private String dob;
+    private String age;
+    private String gender;
     private String address;
     private String phoneNumber;
     private String maritalStatus;
@@ -25,6 +27,7 @@ public class KYCDataResDto {
     private String nationalId;
     private boolean isDocumentDataSubmitted;
     private boolean isUserImageSubmitted;
+    private boolean isDigitalSignatureSubmitted;
     //    @Lob
 
 }

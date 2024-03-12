@@ -18,7 +18,12 @@ public class KYCDocData {
     @Lob
     private byte[] userImage;
 
+    @Lob
+    private byte[] digitalSignature;
+
+
     int docSize;
     int userImgSize;
+    int digitalSignSize;
 
 }

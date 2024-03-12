@@ -15,7 +15,7 @@ import java.util.UUID;
 @Service
 public class RefreshTokenService {
 
-    public long refreshTokenValidity = 24 * 60 * 60 * 1000;
+    public long REFRESH_TOKEN_VALIDITY = 90 * 60 * 1000;
 
 
     @Autowired
@@ -35,12 +35,12 @@ public class RefreshTokenService {
         if (refreshTokenOfUser == null) {
             refreshTokenOfUser = RefreshToken.builder()
                     .refreshTokenString(UUID.randomUUID().toString())
-                    .expiry(Instant.now().plusMillis(refreshTokenValidity))
+                    .expiry(Instant.now().plusMillis(REFRESH_TOKEN_VALIDITY))
                     .user(user).build();
 
 
         } else {
-            refreshTokenOfUser.setExpiry(Instant.now().plusMillis(refreshTokenValidity));
+            refreshTokenOfUser.setExpiry(Instant.now().plusMillis(REFRESH_TOKEN_VALIDITY));
         }
 
         refreshTokenRepository.save(refreshTokenOfUser);
@@ -50,9 +50,9 @@ public class RefreshTokenService {
 
     }
 
-    public RefreshToken verifyRefreshToken(String refreshToken) {
+    public RefreshToken verifyRefreshToken(String refreshToken) throws Exception {
         RefreshToken refreshTokenOb = refreshTokenRepository.findByRefreshTokenString(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Given token does not exist"));
+                .orElseThrow(() -> new Exception("Given token does not exist"));
 
         if (refreshTokenOb.getExpiry().compareTo(Instant.now()) < 0) {
             refreshTokenRepository.delete(refreshTokenOb);

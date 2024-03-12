@@ -39,6 +39,9 @@ public class KYC implements Serializable {
 
     private String nationalId;
 
+    private String gender;
+
+    private String age;
     //
 //    //    private String workID;
 //
@@ -48,6 +51,9 @@ public class KYC implements Serializable {
 
     @Lob
     private byte[] userImage;
+
+    @Lob
+    private byte[] digitalSignature;
 //
 //    //    will be true on final submit
 //    private boolean isSubmitted;
